@@ -259,7 +259,7 @@ const state = {
   tab: 'dashboard',
   modal: null,
   carrito: [],
-  ventaForm: { cliente_nombre:'', cliente_id:'', metodo_pago:'efectivo', descuento:0, notas:'' },
+  ventaForm: { cliente_nombre:'', cliente_telefono:'', cliente_id:'', metodo_pago:'efectivo', descuento:0, notas:'', incluir_garantia:false },
   filtros: {
     productos: { texto:'', categoria:'', proveedor:'', estado:'' },
     ventas: { desde:'', hasta:'', vendedor:'', estado:'' },
@@ -322,6 +322,19 @@ function stockBajoUmbral(p){ return Number(p.stock_minimo != null ? p.stock_mini
 function nombreCategoria(id){ const c = state.categorias.find(x=>x.id===id); return c ? c.nombre : '—'; }
 function nombreProveedor(id){ const p = state.proveedores.find(x=>x.id===id); return p ? p.nombre : '—'; }
 function productoPorId(id){ return state.productos.find(p=>p.id===id); }
+function categoriaIdPorNombre(nombre){
+  const c = state.categorias.find(c => (c.nombre||'').trim().toLowerCase() === nombre.trim().toLowerCase());
+  return c ? c.id : null;
+}
+function itemsIncluyenCategoria(items, nombreCategoria){
+  const catId = categoriaIdPorNombre(nombreCategoria);
+  if(!catId) return false;
+  return items.some(it => {
+    if(!it.producto_id) return false;
+    const p = productoPorId(it.producto_id);
+    return p && p.categoria_id === catId;
+  });
+}
 
 function baseUrl(){ return location.origin + location.pathname; }
 
@@ -776,6 +789,7 @@ function posColumna(esAdmin){
   return `
   <div class="panel">
     <div class="panel-head"><h3>Nueva venta</h3></div>
+    <button type="button" class="btn btn-ghost btn-full" data-action="agregar-instalacion" style="margin-bottom:10px;">🔧 Agregar instalación (servicio, no descuenta stock)</button>
     <input type="search" placeholder="Buscar producto por nombre o SKU…" id="buscarProductoVenta" oninput="filtrarFilasPorTexto('tablaVentaProductos', this.value)">
     <div class="table-wrap" style="max-height:420px;overflow-y:auto;margin-top:12px;">
       <table id="tablaVentaProductos">
@@ -823,6 +837,11 @@ function carritoHtml(esAdmin){
       <input type="text" id="ventaClienteNombre" value="${esc(state.ventaForm.cliente_nombre)}" placeholder="Nombre del cliente" oninput="state.ventaForm.cliente_nombre=this.value">
     </div>
     <div class="field">
+      <label>Teléfono del cliente (opcional)</label>
+      <input type="text" id="ventaClienteTelefono" value="${esc(state.ventaForm.cliente_telefono)}" placeholder="300 000 0000" oninput="state.ventaForm.cliente_telefono=this.value">
+      <p class="hint">Si escribes el nombre, el cliente se guarda automáticamente en la pestaña Clientes.</p>
+    </div>
+    <div class="field">
       <label>Método de pago</label>
       <select id="ventaMetodoPago" onchange="state.ventaForm.metodo_pago=this.value">
         ${['efectivo','tarjeta','transferencia','otro'].map(m=>`<option value="${m}" ${state.ventaForm.metodo_pago===m?'selected':''}>${m[0].toUpperCase()+m.slice(1)}</option>`).join('')}
@@ -832,15 +851,33 @@ function carritoHtml(esAdmin){
       <label>Descuento</label>
       <input type="number" min="0" id="ventaDescuento" value="${state.ventaForm.descuento}" oninput="actualizarDescuento(this.value)">
     </div>
+    <label class="flex" style="gap:8px;align-items:center;margin-top:10px;">
+      <input type="checkbox" id="ventaIncluirGarantia" ${state.ventaForm.incluir_garantia?'checked':''} onchange="state.ventaForm.incluir_garantia=this.checked">
+      <span class="small">Incluir nota de garantía (solo por defectos de fábrica o de instalación)</span>
+    </label>
     <div class="total-line"><span>Subtotal</span><span>${fmtMoney(subtotal)}</span></div>
-    <div class="total-line"><span>Descuento</span><span>- ${fmtMoney(descuento)}</span></div>
-    ${ivaAplica ? `<div class="total-line"><span>IVA (${ivaPct}%)</span><span>+ ${fmtMoney(impuestos)}</span></div>` : ''}
-    <div class="total-line grand"><span>Total</span><span>${fmtMoney(total)}</span></div>
+    <div class="total-line"><span>Descuento</span><span id="lblCarritoDescuento">- ${fmtMoney(descuento)}</span></div>
+    ${ivaAplica ? `<div class="total-line"><span>IVA (${ivaPct}%)</span><span id="lblCarritoImpuestos">+ ${fmtMoney(impuestos)}</span></div>` : ''}
+    <div class="total-line grand"><span>Total</span><span id="lblCarritoTotal">${fmtMoney(total)}</span></div>
     <button class="btn btn-primary btn-full" style="margin-top:14px;" data-action="confirmar-venta">Confirmar venta</button>
     <button class="btn btn-full" style="margin-top:8px;" data-action="generar-cotizacion">📄 Generar cotización (no descuenta stock)</button>
   `;
 }
-function actualizarDescuento(v){ state.ventaForm.descuento = Number(v)||0; render(); }
+function actualizarDescuento(v){
+  // Solo actualiza el estado y los totales en pantalla (sin re-render completo),
+  // para no perder el foco del campo mientras se escribe.
+  state.ventaForm.descuento = Number(v)||0;
+  const subtotal = state.carrito.reduce((s,l)=>s+l.cantidad*l.precio_unitario,0);
+  const descuento = Number(state.ventaForm.descuento)||0;
+  const base = Math.max(0, subtotal-descuento);
+  const ivaAplica = state.ajustes.iva_aplica === 'true';
+  const ivaPct = Number(state.ajustes.iva_porcentaje)||0;
+  const impuestos = ivaAplica ? Math.round(base*ivaPct/100) : 0;
+  const total = base + impuestos;
+  const elD = document.getElementById('lblCarritoDescuento'); if(elD) elD.textContent = '- '+fmtMoney(descuento);
+  const elI = document.getElementById('lblCarritoImpuestos'); if(elI) elI.textContent = '+ '+fmtMoney(impuestos);
+  const elT = document.getElementById('lblCarritoTotal'); if(elT) elT.textContent = fmtMoney(total);
+}
 
 function historialVentasHtml(esAdmin){
   const f = state.filtros.ventas;
@@ -1237,7 +1274,7 @@ function modalProducto(id){
   const margen = margenSugeridoGlobal();
   return `
   <div class="modal-overlay" data-action="cerrar-modal-fondo">
-  <div class="modal-box wide" onclick="event.stopPropagation()">
+  <div class="modal-box wide">
     <div class="modal-head"><h3>${p ? 'Editar producto' : 'Nuevo producto'}</h3><button class="btn btn-ghost btn-sm" data-action="cerrar-modal">✕</button></div>
     <form id="formProducto" class="form-grid">
       <div class="field"><label>Nombre *</label><input type="text" name="nombre" value="${esc(p?.nombre||'')}" required></div>
@@ -1290,7 +1327,7 @@ function modalProveedor(id){
   const p = id ? state.proveedores.find(x=>x.id===id) : null;
   return `
   <div class="modal-overlay" data-action="cerrar-modal-fondo">
-  <div class="modal-box" onclick="event.stopPropagation()">
+  <div class="modal-box">
     <div class="modal-head"><h3>${p?'Editar proveedor':'Nuevo proveedor'}</h3><button class="btn btn-ghost btn-sm" data-action="cerrar-modal">✕</button></div>
     <form id="formProveedor" class="form-grid">
       <div class="field full"><label>Nombre *</label><input type="text" name="nombre" value="${esc(p?.nombre||'')}" required></div>
@@ -1315,7 +1352,7 @@ function modalCliente(id){
   const c = id ? state.clientes.find(x=>x.id===id) : null;
   return `
   <div class="modal-overlay" data-action="cerrar-modal-fondo">
-  <div class="modal-box" onclick="event.stopPropagation()">
+  <div class="modal-box">
     <div class="modal-head"><h3>${c?'Editar cliente':'Nuevo cliente'}</h3><button class="btn btn-ghost btn-sm" data-action="cerrar-modal">✕</button></div>
     <form id="formCliente" class="form-grid">
       <div class="field full"><label>Nombre *</label><input type="text" name="nombre" value="${esc(c?.nombre||'')}" required></div>
@@ -1334,7 +1371,7 @@ function modalCliente(id){
 function modalEntrada(){
   return `
   <div class="modal-overlay" data-action="cerrar-modal-fondo">
-  <div class="modal-box" onclick="event.stopPropagation()">
+  <div class="modal-box">
     <div class="modal-head"><h3>Registrar entrada (compra)</h3><button class="btn btn-ghost btn-sm" data-action="cerrar-modal">✕</button></div>
     <form id="formEntrada" class="form-grid">
       <div class="field full"><label>Producto *</label>
@@ -1356,7 +1393,7 @@ function modalEntrada(){
 function modalAjuste(){
   return `
   <div class="modal-overlay" data-action="cerrar-modal-fondo">
-  <div class="modal-box" onclick="event.stopPropagation()">
+  <div class="modal-box">
     <div class="modal-head"><h3>Ajuste / salida de inventario</h3><button class="btn btn-ghost btn-sm" data-action="cerrar-modal">✕</button></div>
     <form id="formAjuste" class="form-grid">
       <div class="field full"><label>Producto *</label>
@@ -1532,6 +1569,14 @@ function agregarAlCarrito(productoId){
   else{ state.carrito.push({ producto_id:p.id, nombre:p.nombre, precio_unitario:Number(p.precio_venta), costo_unitario:Number(p.costo), cantidad:1 }); }
   render();
 }
+function agregarInstalacionCarrito(){
+  const val = window.prompt('Costo de la instalación (COP):', '0');
+  if(val === null) return;
+  const precio = Number(val);
+  if(isNaN(precio) || precio < 0){ toast('Ingresa un valor numérico válido.','error'); return; }
+  state.carrito.push({ producto_id:null, nombre:'Instalación', precio_unitario:precio, costo_unitario:0, cantidad:1 });
+  render();
+}
 function cambiarCantidadCarrito(idx, delta){
   const linea = state.carrito[idx];
   if(!linea) return;
@@ -1564,16 +1609,38 @@ async function confirmarVenta(){
 
   try{
     for(const linea of state.carrito){
+      if(!linea.producto_id) continue; // servicios como "Instalación" no afectan stock
       const p = productoPorId(linea.producto_id);
       if(!p || Number(p.stock_actual) < linea.cantidad){
         toast(`Stock insuficiente para ${linea.nombre}.`,'error');
         return;
       }
     }
+
+    // Cliente opcional: si se escribió un nombre, se busca o se crea en Clientes automáticamente
+    let clienteId = null;
+    const nombreCliente = (state.ventaForm.cliente_nombre||'').trim();
+    const telCliente = (state.ventaForm.cliente_telefono||'').trim();
+    if(nombreCliente){
+      const existente = state.clientes.find(c => (c.nombre||'').trim().toLowerCase() === nombreCliente.toLowerCase());
+      if(existente){
+        clienteId = existente.id;
+        if(telCliente && !existente.telefono){
+          await supa.from('clientes').update({ telefono: telCliente }).eq('id', existente.id);
+        }
+      }else{
+        const { data: nuevoCliente, error: errCli } = await supa.from('clientes')
+          .insert({ nombre: nombreCliente, telefono: telCliente || null }).select().single();
+        if(!errCli && nuevoCliente) clienteId = nuevoCliente.id;
+      }
+    }
+
     const { data: venta, error: errV } = await supa.from('ventas').insert({
-      cliente_nombre: state.ventaForm.cliente_nombre || null,
+      cliente_nombre: nombreCliente || null,
+      cliente_id: clienteId,
       vendedor: nombreUsuarioActual(),
       metodo_pago: state.ventaForm.metodo_pago,
+      incluye_garantia: !!state.ventaForm.incluir_garantia,
       subtotal, descuento, impuestos, total, costo_total: costoTotal, ganancia, estado:'completada'
     }).select().single();
     if(errV) throw errV;
@@ -1584,6 +1651,7 @@ async function confirmarVenta(){
         cantidad: linea.cantidad, precio_unitario: linea.precio_unitario, costo_unitario: linea.costo_unitario,
         subtotal: linea.cantidad*linea.precio_unitario
       });
+      if(!linea.producto_id) continue; // servicios como "Instalación": sin stock que ajustar
       const p = productoPorId(linea.producto_id);
       const nuevoStock = Number(p.stock_actual) - linea.cantidad;
       await supa.from('productos').update({ stock_actual: nuevoStock }).eq('id', linea.producto_id);
@@ -1594,7 +1662,7 @@ async function confirmarVenta(){
     }
     toast(`Venta #${venta.numero_venta} registrada por ${fmtMoney(total)}.`,'success');
     state.carrito = [];
-    state.ventaForm = { cliente_nombre:'', cliente_id:'', metodo_pago:'efectivo', descuento:0, notas:'' };
+    state.ventaForm = { cliente_nombre:'', cliente_telefono:'', cliente_id:'', metodo_pago:'efectivo', descuento:0, notas:'', incluir_garantia:false };
     await cargarDatos();
   }catch(err){
     console.error(err);
@@ -1736,7 +1804,7 @@ function generarCotizacionImprimible(){
 
   const cuerpo = `
     <div class="billto">
-      <div><strong>Cliente:</strong><br>${esc(state.ventaForm.cliente_nombre || 'Consumidor final')}</div>
+      <div><strong>Cliente:</strong><br>${esc(state.ventaForm.cliente_nombre || 'Consumidor final')}${state.ventaForm.cliente_telefono ? '<br>'+esc(state.ventaForm.cliente_telefono) : ''}</div>
       <div style="text-align:right;"><strong>Válida por 8 días</strong></div>
     </div>
     <table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio unit.</th><th>Subtotal</th></tr></thead>
@@ -1747,6 +1815,8 @@ function generarCotizacionImprimible(){
       ${ivaAplica ? `<div class="kpi"><strong>IVA (${ivaPct}%)</strong><br>${fmtMoney(impuestos)}</div>` : ''}
       <div class="kpi"><strong>Total</strong><br>${fmtMoney(total)}</div>
     </div>
+    ${itemsIncluyenCategoria(state.carrito, 'Cámaras') ? `<p class="legal"><strong>Nota:</strong> el servicio técnico se cobra por aparte.</p>` : ''}
+    ${state.ventaForm.incluir_garantia ? `<p class="legal"><strong>Garantía:</strong> aplica solo por defectos de fábrica o de instalación.</p>` : ''}
     <p class="legal">Este documento es una cotización informal, no descuenta inventario ni queda registrada en el sistema, y no constituye una factura electrónica. Precios sujetos a cambio sin previo aviso.</p>`;
 
   abrirVentanaReporte('Cotización', `N° ${numeroCot}`, cuerpo);
@@ -1772,6 +1842,8 @@ function generarFacturaImprimible(ventaId){
       <div class="kpi"><strong>Total</strong><br>${fmtMoney(venta.total)}</div>
     </div>
     ${venta.estado==='anulada' ? `<p class="anulada">VENTA ANULADA</p>` : ''}
+    ${itemsIncluyenCategoria(items, 'Cámaras') ? `<p class="legal"><strong>Nota:</strong> el servicio técnico se cobra por aparte.</p>` : ''}
+    ${venta.incluye_garantia ? `<p class="legal"><strong>Garantía:</strong> aplica solo por defectos de fábrica o de instalación.</p>` : ''}
     <p class="legal">Factura de venta / comprobante interno. Este documento no constituye una factura electrónica ante la DIAN.</p>`;
 
   abrirVentanaReporte('Factura de venta', `Venta N° ${venta.numero_venta} · ${fmtDateTime(venta.fecha)}`, cuerpo);
@@ -1886,7 +1958,8 @@ document.addEventListener('DOMContentLoaded', () => {
     else if(accion==='toggle-tema'){ state.tema = state.tema==='dark' ? 'light' : 'dark'; render(); }
     else if(accion==='recargar'){ cargarDatos(); }
     else if(accion==='cerrar-sesion'){ state.autenticado=false; state.carrito=[]; state.tab='dashboard'; render(); }
-    else if(accion==='cerrar-modal' || accion==='cerrar-modal-fondo'){ cerrarModal(); }
+    else if(accion==='cerrar-modal'){ cerrarModal(); }
+    else if(accion==='cerrar-modal-fondo'){ if(e.target===btn){ cerrarModal(); } }
     else if(accion==='nuevo-producto'){ state.modal={tipo:'producto', id:null}; render(); }
     else if(accion==='editar-producto'){ state.modal={tipo:'producto', id}; render(); }
     else if(accion==='nueva-categoria'){ agregarCategoriaRapida(); }
@@ -1900,6 +1973,7 @@ document.addEventListener('DOMContentLoaded', () => {
     else if(accion==='nueva-entrada'){ state.modal={tipo:'entrada'}; render(); }
     else if(accion==='nuevo-ajuste'){ state.modal={tipo:'ajuste'}; render(); }
     else if(accion==='agregar-carrito'){ agregarAlCarrito(id); }
+    else if(accion==='agregar-instalacion'){ agregarInstalacionCarrito(); }
     else if(accion==='carrito-mas'){ cambiarCantidadCarrito(Number(id), 1); }
     else if(accion==='carrito-menos'){ cambiarCantidadCarrito(Number(id), -1); }
     else if(accion==='carrito-quitar'){ quitarDelCarrito(Number(id)); }
