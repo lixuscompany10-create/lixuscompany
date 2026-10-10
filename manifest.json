@@ -1,0 +1,17 @@
+{
+  "name": "Lixus Company — Inventario y Ventas",
+  "short_name": "Lixus",
+  "description": "Control de inventario, ventas, proveedores y reportes de Lixus Company.",
+  "lang": "es-CO",
+  "start_url": "./lixus-inventario.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#06070b",
+  "theme_color": "#06070b",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
