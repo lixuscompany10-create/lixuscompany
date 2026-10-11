@@ -16,7 +16,7 @@
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
    LIXUS COMPANY — Sistema de diseño v3
@@ -75,8 +75,8 @@
   --d-1:120ms; --d-2:180ms; --d-3:220ms; --d-4:260ms;
 
   /* tipografía */
-  --font:'Inter',ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-  --font-display:'Instrument Serif',ui-serif,Georgia,"Times New Roman",serif;
+  --font:'Montserrat',ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --font-display:'Montserrat',ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
 
   --sidebar-w:244px;
   --logo-filter:none;
@@ -122,8 +122,8 @@ html{-webkit-text-size-adjust:100%;}
 html,body{overflow-x:hidden;max-width:100%;}
 body{
   background:var(--bg);color:var(--text);
-  font-family:var(--font);font-size:14px;line-height:1.5;
-  font-feature-settings:"cv11","ss01","ss03";
+  font-family:var(--font);font-size:13.5px;line-height:1.5;
+  font-feature-settings:"lnum";
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
   min-height:100vh;
 }
@@ -771,6 +771,49 @@ td .p-main{gap:10px;}
   .toolbar .seg{max-width:100%;}
 }
 
+
+/* ============================================================
+   TIPOGRAFÍA · Montserrat (alternativa libre a Gotham)
+   Geométrica y amplia: títulos en Semibold con tracking cerrado,
+   marca y etiquetas en mayúsculas con tracking abierto, cifras tabulares.
+   ============================================================ */
+h1,h2,h3,h4{font-weight:600;letter-spacing:-.015em;}
+.sb-name{font-size:15px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;line-height:1;}
+.sb-sub{font-size:9.5px;letter-spacing:.22em;margin-top:5px;}
+.page-head h1{font-weight:600;font-size:30px;line-height:1.1;letter-spacing:-.025em;}
+.ph-desc{font-size:13px;}
+.eyebrow,.sb-group,.section-label{letter-spacing:.14em;font-size:10.5px;font-weight:600;}
+.kpi-top{font-size:12px;}
+.kpi-value{font-weight:600;font-size:25px;line-height:1.15;letter-spacing:-.02em;font-variant-numeric:tabular-nums lining-nums;}
+.kpi-foot{font-size:11.5px;}
+.card-head h3{font-size:13.5px;font-weight:600;letter-spacing:-.01em;}
+.card-sub{font-size:12px;}
+.nav-item{font-size:13px;font-weight:500;}
+.btn{font-size:13px;font-weight:600;letter-spacing:-.005em;}
+.btn-sm{font-size:12px;}
+.chip,.seg button{font-size:12px;}
+th,.phead{font-size:10.5px;font-weight:600;letter-spacing:.1em;}
+table{font-size:12.5px;}
+.p-name,.li-title,.cl-name{font-size:13px;font-weight:600;letter-spacing:-.005em;}
+.p-sub,.li-sub,.cl-unit{font-size:11.5px;}
+.pill{font-size:11px;font-weight:600;}
+.badge{letter-spacing:.06em;}
+.total-line.grand span:last-child{font-weight:600;font-size:22px;letter-spacing:-.02em;}
+.lightbox-caption .lb-name{font-weight:600;font-size:22px;letter-spacing:-.02em;}
+.gate-title{font-weight:600;font-size:30px;letter-spacing:-.025em;line-height:1.1;}
+.role-item .ri-t{font-weight:600;}
+input[type=text],input[type=password],input[type=number],input[type=date],input[type=email],input[type=tel],input[type=search],select,textarea{font-size:13.5px;}
+@media (max-width:1023px){
+  .ab-title{font-size:14px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;}
+  .page-head h1{font-size:26px;}
+  /* 16 px en campos de texto evita que el iPhone haga zoom al tocarlos */
+  input[type=text],input[type=password],input[type=number],input[type=date],input[type=email],input[type=tel],input[type=search],select,textarea{font-size:16px;}
+}
+@media (max-width:560px){
+  .kpi-value{font-size:21px;}
+  .page-head h1{font-size:25px;}
+}
+
 </style>
 </head>
 <body>
@@ -1243,7 +1286,7 @@ function shell(contenido){
     <aside class="sidebar" aria-label="Menú">
       <div class="sb-brand">
         <img src="${LOGO_DATA_URI}" alt="" class="logo-mark">
-        <div><div class="sb-name">Lixus</div><div class="sb-sub">Inventario</div></div>
+        <div><div class="sb-name">Lixus</div><div class="sb-sub">Company · Inventario</div></div>
       </div>
       <nav class="sb-nav">${nav}</nav>
       <div class="sb-foot">
@@ -1600,8 +1643,8 @@ function initCharts(){
   const linea = colorToken('--line-strong') || '#303037';
 
   Chart.defaults.color = texto3;
-  Chart.defaults.font.family = "Inter, system-ui, sans-serif";
-  Chart.defaults.font.size = 11.5;
+  Chart.defaults.font.family = "Montserrat, system-ui, sans-serif";
+  Chart.defaults.font.size = 11;
   const animacion = animarGraficos ? { duration: 450, easing: 'easeOutQuart' } : false;
   const tooltip = {
     backgroundColor: superficie, borderColor: linea, borderWidth: 1, titleColor: texto2, bodyColor: texto,
@@ -3370,13 +3413,13 @@ function abrirVentanaReporte(titulo, subtitulo, cuerpoHtml){
   if(!w){ toast('El navegador bloqueó la ventana del reporte. Permite ventanas emergentes para este sitio.','error'); return; }
   w.document.write(`
     <html><head><meta charset="utf-8"><title>${esc(titulo)} — Lixus Company</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       @page{margin:16mm;}
-      body{font-family:Inter,Arial,sans-serif;padding:36px;color:#121214;font-size:13px;line-height:1.5;}
+      body{font-family:Montserrat,Arial,sans-serif;padding:36px;color:#121214;font-size:12.5px;line-height:1.5;}
       .doc-head{display:flex;align-items:center;gap:18px;padding-bottom:18px;border-bottom:1px solid #121214;}
       .doc-head img{height:54px;width:auto;filter:invert(1);}
-      h1{font-family:'Instrument Serif',Georgia,serif;font-weight:400;font-size:34px;line-height:1;margin:0;}
+      h1{font-family:Montserrat,Arial,sans-serif;font-weight:600;font-size:28px;letter-spacing:-.02em;line-height:1.1;margin:0;}
       h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#55555D;margin:28px 0 0;font-weight:600;}
       .sub{color:#6E6E77;margin:6px 0 0;font-size:12px;}
       table{width:100%;border-collapse:collapse;margin-top:14px;}
